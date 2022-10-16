@@ -181,7 +181,7 @@ for epoch in range(epochs):
     total_f1.append(valid_f1)
 
     with open('f1_score.txt', 'a') as f:
-        f.write(total_f1 + '\n')
+        f.write(valid_f1 + '\n')
 
     if valid_f1 > best_f1:
         print(f"Validation F1 Improved - {best_f1} ---> {valid_f1}")
