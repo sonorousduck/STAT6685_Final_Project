@@ -132,6 +132,7 @@ if load:
     model.load_state_dict(torch.load('./model.bin'))
 
 best_f1 = 0.0076585670200064
+total_f1 = []
 
 loop = tqdm(train_loader, position=0)
 for epoch in range(epochs):
@@ -177,9 +178,15 @@ for epoch in range(epochs):
             loop.set_postfix(loss=loss.item())
 
     valid_f1 = f1_score(label, pred, average='macro')
+    total_f1.append(valid_f1)
+
+    with open('f1_score.txt', 'a') as f:
+        f.write(total_f1 + '\n')
 
     if valid_f1 > best_f1:
         print(f"Validation F1 Improved - {best_f1} ---> {valid_f1}")
         best_f1 = valid_f1
         torch.save(model.state_dict(), f'./model.bin')
         print(f"Saved model checkpoint at ./model.bin")
+
+
