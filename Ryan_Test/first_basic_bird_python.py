@@ -143,7 +143,7 @@ for epoch in range(epochs):
         y = y.to(device)
 
         outputs = model(x)
-        _, predicitions = torch.max(outputs, 1)
+        _, predictions = torch.max(outputs, 1)
         
         loss = criterion(outputs, y)
         loss.backward()
