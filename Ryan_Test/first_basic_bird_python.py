@@ -76,8 +76,8 @@ X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.
 sr = 32_000
 n_fft = 1024
 hop_length = 512
-train_batch_size = 32
-valid_batch_size = 64
+train_batch_size = 128
+valid_batch_size = 128
 num_classes = 152
 duration = 7
 n_mels = 64
@@ -122,7 +122,7 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 train_loader, valid_loader = get_data()
 
 # Train Loop
-load = True
+load = True 
 model = SimpleModel().to(device)
 criterion = nn.CrossEntropyLoss()
 optimizer = Adam(model.parameters(), lr=1e-4)
@@ -131,11 +131,12 @@ epochs = 150
 if load:
     model.load_state_dict(torch.load('./model.bin'))
 
-best_f1 = 0.0076585670200064
+best_f1 = 0.0
 total_f1 = []
 
-loop = tqdm(train_loader, position=0)
 for epoch in range(epochs):
+    print(f"Starting epoch: {epoch}")
+    loop = tqdm(train_loader, position=0)
     model.train()
     for i, (x, y) in enumerate(loop):
         y = y.type(torch.LongTensor)
@@ -143,7 +144,7 @@ for epoch in range(epochs):
         y = y.to(device)
 
         outputs = model(x)
-        _, predicitions = torch.max(outputs, 1)
+        # _, predicitions = torch.max(outputs, 1)
         
         loss = criterion(outputs, y)
         loss.backward()
@@ -154,14 +155,14 @@ for epoch in range(epochs):
         loop.set_postfix(loss=loss.item())
 
     # Run validation loop
-    if epoch + 1 % 1 == 0:
+    if True:
         model.eval()
-
+        print("Checking validation score")
         loop_validation = tqdm(valid_loader, position=0)
         pred = []
         label = []
 
-        for i, (X, y) in enumerate(loop):
+        for i, (X, y) in enumerate(loop_validation):
             y = y.type(torch.LongTensor)
             y = y.to(device)
             X = X.to(device)
@@ -174,19 +175,24 @@ for epoch in range(epochs):
             pred.extend(predictions.view(-1).cpu().detach().numpy())
             label.extend(y.view(-1).cpu().detach().numpy())
 
-            loop.set_description(f"Validation Epoch [{epoch + 1}/{epochs}")
-            loop.set_postfix(loss=loss.item())
+            loop_validation.set_description(f"Validation Epoch [{epoch + 1}/{epochs}")
+            loop_validation.set_postfix(loss=loss.item())
 
-    valid_f1 = f1_score(label, pred, average='macro')
-    total_f1.append(valid_f1)
+        valid_f1 = f1_score(label, pred, average='macro')
+        total_f1.append(valid_f1)
 
-    with open('f1_score.txt', 'a') as f:
-        f.write(valid_f1 + '\n')
+        try:
+            with open('f1_score.txt', 'a') as f:
+                f.write(f"{valid_f1}\n")
+        except:
+            pass
 
-    if valid_f1 > best_f1:
-        print(f"Validation F1 Improved - {best_f1} ---> {valid_f1}")
-        best_f1 = valid_f1
-        torch.save(model.state_dict(), f'./model.bin')
-        print(f"Saved model checkpoint at ./model.bin")
+        if valid_f1 > best_f1:
+            print(f"Validation F1 Improved - {best_f1} ---> {valid_f1}")
+            best_f1 = valid_f1
+            torch.save(model.state_dict(), f'./model.bin')
+            print(f"Saved model checkpoint at ./model.bin")
+        else:
+            print(f"Validation did NOT improve - {best_f1} <--- {valid_f1}")
 
 
