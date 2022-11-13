@@ -218,7 +218,7 @@ def run(fold):
     if (last_accuracy < temp_accuracy / len(valid_loader)):
         print(f"Accuracy improved from {last_accuracy} -> {temp_accuracy / len(valid_loader)}. Saving Model")
         last_accuracy = temp_accuracy / len(valid_loader)
-        torch.save(regnet.state_dict(), f'./regnet.bin')
+        torch.save(regnet.state_dict(), f'./regnet_deeper.bin')
 
 
     if early_stop <= 0:
@@ -271,20 +271,20 @@ for i in range(fold):
   #     paramt.requires_grad = False
 
   # Change the final layer to fit our purposes
-#   inception.fc = nn.Sequential(
-#     nn.Linear(2048, 1024), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(1024, 512), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(512, 256), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(256, 152)
-#   )
+  regnet.fc = nn.Sequential(
+    nn.Linear(2520, 1024), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(1024, 512), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(512, 256), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(256, 152)
+  )
 
-  regnet.fc = nn.Linear(in_features=2520, out_features=152)
+  # regnet.fc = nn.Linear(in_features=2520, out_features=152)
   regnet.to(device)
 
   train_epoch_losses, valid_epoch_losses, valid_epoch_accuracy = run(4)
@@ -304,4 +304,4 @@ for i in range(fold):
   ax[1].set_title("Accuracy over Epochs")
   ax[1].legend()
 
-  plt.savefig(f'./regnet.jpg')
+  plt.savefig(f'./regnet_deeper.jpg')

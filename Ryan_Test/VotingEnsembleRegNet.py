@@ -18,7 +18,6 @@ device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cp
 import cv2
 import torchvision
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torchvision.models import resnext101_64x4d
 
 class BirdClefDataset(Dataset):
     def __init__(self, df, transformation, target_sample_rate, duration, is_train):
@@ -151,7 +150,7 @@ def run(fold):
 
   load = False
   criterion = nn.CrossEntropyLoss()
-  optimizer = Adam(resnext.parameters(), lr=1e-4)
+  optimizer = Adam(regnet.parameters(), lr=1e-4)
   scheduler = ReduceLROnPlateau(optimizer, 'min')
   epochs = 1000
   train_epoch_losses = []
@@ -161,19 +160,19 @@ def run(fold):
   last_accuracy = 0
 
   if load:
-    resnext.load_state_dict(torch.load('./resnext.bin'))
+    regnet.load_state_dict(torch.load('./regnet.bin'))
 
 
   for epoch in range(epochs):
     loop = tqdm(train_loader)
-    resnext.train()
+    regnet.train()
     epoch_loss = 0
     for i, (x, y) in enumerate(loop):
       y = y.type(torch.LongTensor)
       y = y.to(device)
       x = x.to(device)
 
-      outputs = resnext(x)
+      outputs = regnet(x)
       loss = criterion(outputs, y)
     #   loss2 = criterion(aux_outputs, y)
     #   loss = loss1 + 0.4 * loss2
@@ -192,7 +191,7 @@ def run(fold):
 
     # Validation
     loop_validation = tqdm(valid_loader)
-    resnext.eval()
+    regnet.eval()
     temp_loss = 0
     temp_accuracy = 0
     for i, (x, y) in enumerate(loop_validation):
@@ -200,7 +199,7 @@ def run(fold):
       y = y.to(device)
       x = x.to(device)
 
-      outputs = resnext(x)
+      outputs = regnet(x)
       _, predictions = torch.max(outputs, 1)
       loss = criterion(outputs, y)
       temp_loss += loss.item()
@@ -219,7 +218,7 @@ def run(fold):
     if (last_accuracy < temp_accuracy / len(valid_loader)):
         print(f"Accuracy improved from {last_accuracy} -> {temp_accuracy / len(valid_loader)}. Saving Model")
         last_accuracy = temp_accuracy / len(valid_loader)
-        torch.save(resnext.state_dict(), f'./resnext.bin')
+        torch.save(regnet.state_dict(), f'./regnet_model_3.bin')
 
 
     if early_stop <= 0:
@@ -263,7 +262,7 @@ fold = 1
 for i in range(fold):
 
   
-  resnext = torchvision.models.resnext101_64x4d(pretrained=True)
+  regnet = torchvision.models.regnet_x_32gf(pretrained=True)
 
 
   # Accuracy for frozen layers only hit 27.5%. Attempting to leave all layers unfrozen
@@ -272,26 +271,26 @@ for i in range(fold):
   #     paramt.requires_grad = False
 
   # Change the final layer to fit our purposes
-#   inception.fc = nn.Sequential(
-#     nn.Linear(2048, 1024), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(1024, 512), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(512, 256), 
-#             nn.ReLU(), 
-#             nn.Dropout(p=0.5),
-#             nn.Linear(256, 152)
-#   )
+  regnet.fc = nn.Sequential(
+    nn.Linear(2520, 1024), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(1024, 512), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(512, 256), 
+            nn.ReLU(), 
+            nn.Dropout(p=0.5),
+            nn.Linear(256, 152)
+  )
 
-  resnext.fc = nn.Linear(in_features=2048, out_features=152)
-  resnext.to(device)
+  # regnet.fc = nn.Linear(in_features=2520, out_features=152)
+  regnet.to(device)
 
   train_epoch_losses, valid_epoch_losses, valid_epoch_accuracy = run(4)
 
   fig, ax = plt.subplots(1, 2, figsize=(10, 7))
-  plt.suptitle(f"ResNeXt")
+  plt.suptitle(f"RegNet")
   ax[0].plot(train_epoch_losses, label="Train Loss")
   ax[0].plot(valid_epoch_losses, label="Validation Loss")
   ax[0].set_xlabel("Epochs")
@@ -305,4 +304,4 @@ for i in range(fold):
   ax[1].set_title("Accuracy over Epochs")
   ax[1].legend()
 
-  plt.savefig(f'./resnext.jpg')
+  plt.savefig(f'./regnet_model_3.jpg')
